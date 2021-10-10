@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import torch
 from operator import attrgetter
 from typing import Dict, List, Optional, Tuple, Set, Union
@@ -11,12 +12,16 @@ def topk_huggingface(timestep: int,
                      beam_size: int,
                      vocab_size: int,
                      pad_token_id: int,
-                     prune_factor: float,
-                     sat_tolerance: float,
+                     prune_factor: int,
+                     sat_tolerance: int,
+                     beta: float,
                      inactive: np.array,
                      scores: np.array,
                      hypotheses: List[ConstrainedHypothesis],
-                     num_fill: int) -> Tuple[np.array, np.array, List[List[Union[ConstrainedHypothesis, None]]], List[List[int]]]:
+                     num_fill: int,
+                     early_stop: float = None) -> Tuple[np.array, np.array,
+                                                        List[List[Union[ConstrainedHypothesis, None]]],
+                                                        List[List[int]]]:
     """
     Builds a new topk list such that the beam contains hypotheses having completed different numbers of constraints.
     These items are built from three different types: (1) the best items across the whole
@@ -67,32 +72,34 @@ def topk_huggingface(timestep: int,
                                                                                   beam_size,
                                                                                   prune_factor,
                                                                                   sat_tolerance,
+                                                                                  beta,
                                                                                   inactive[sentno],
                                                                                   scores[sentno],
                                                                                   hypotheses[rows],
                                                                                   best_ids[sentno],
                                                                                   best_word_ids[sentno],
                                                                                   seq_scores[sentno],
-                                                                                  num_fill=num_fill)
+                                                                                  num_fill=num_fill,
+                                                                                  early_stop=early_stop)
 
     select_raw_token_idx = select_best_ids * vocab_size + select_best_word_ids
     return select_seq_scores, select_raw_token_idx, select_hypotheses, select_num_mets
 
 
-lambda_1 = 0.0
-
 def _sequential_topk(timestep: int,
                      beam_size: int,
-                     prune_factor: float,
-                     sat_tolerance: float,
+                     prune_factor: int,
+                     sat_tolerance: int,
+                     beta: float,
                      inactive: np.array,
                      scores: np.array,
                      hypotheses: List[ConstrainedHypothesis],
                      best_ids: np.array,
                      best_word_ids: np.array,
                      sequence_scores: np.array,
-                     num_fill: int = None) -> Tuple[np.array, np.array, np.array,
-                                                    List[ConstrainedHypothesis], List[int]]:
+                     num_fill: int = None,
+                     early_stop: float = None) -> Tuple[np.array, np.array, np.array,
+                                                         List[ConstrainedHypothesis], List[int]]:
     """
     Builds a new topk list such that the beam contains hypotheses having completed different numbers of constraints.
     These items are built from three different types: (1) the best items across the whole
@@ -130,7 +137,6 @@ def _sequential_topk(timestep: int,
     hit = np.stack([best_ids, best_word_ids], axis=1).tolist()
     # For each hypothesis, we add (2) all the constraints that could follow it and
     # (3) the best item (constrained or not) in that row
-    best_next = np.argmax(scores, axis=1)
     for row in range(beam_size if timestep > 0 else 1):
         if inactive[row]:
             continue
@@ -157,6 +163,16 @@ def _sequential_topk(timestep: int,
                 else:
                     candidates.add(cand)
 
+        # Add finished candidates in finished set:
+        if hyp.finished() and early_stop is not None:
+            best_k = np.argsort(scores[row])[::-1][:int(beam_size * early_stop)]
+            for col in best_k:
+                if col in hyp.eos():
+                    new_item = hyp.advance(col)
+                    score = scores[row, col]
+                    cand = ConstrainedCandidate(row, col, score, new_item)
+                    finished_candidates.add(cand)
+
     if num_fill is not None:
         assert num_fill > beam_size, "at least select number of beam candidates"
     else:
@@ -168,6 +184,12 @@ def _sequential_topk(timestep: int,
         sorted_candidates = sorted(candidates, key=attrgetter('score'), reverse=True)
         max_satisfy = max([x.hypothesis.num_met() for x in sorted_candidates])
         sorted_candidates = [x for x in sorted_candidates if x.hypothesis.num_met() >= max_satisfy - sat_tolerance]
+
+        for cand in sorted_candidates:
+            cand.rank = cand.score / (timestep + 1)
+            if cand.hypothesis.max_process:
+                cand.rank -= beta * math.log(cand.hypothesis.max_process)
+        sorted_candidates = sorted(sorted_candidates, key=attrgetter('rank'), reverse=True)
 
         # Bucket candidates in each group by met order
         all_orders = set([x.hypothesis.met_order() for x in sorted_candidates])
@@ -183,7 +205,7 @@ def _sequential_topk(timestep: int,
                     chunk_i.append(g[i])
             chunk_candidates.append(chunk_i)
         # Sort candidates in each chunk by score
-        chunk_candidates = [sorted(x, key=attrgetter('score'), reverse=True) for x in chunk_candidates]
+        chunk_candidates = [sorted(x, key=attrgetter('rank'), reverse=True) for x in chunk_candidates]
 
     pruned_candidates = sorted(finished_candidates, key=attrgetter('score'), reverse=True)[:beam_size]
     num_finish = len(pruned_candidates)

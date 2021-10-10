@@ -452,7 +452,7 @@ class ConstrainedHypothesis:
         """
         :return: the number of constraints that have been met.
         """
-        return tuple(sorted(self.orders)) #+ tuple(self.in_process)
+        return tuple(sorted(self.orders))
 
     def clause_in_process(self) -> tuple:
         """

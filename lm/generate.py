@@ -37,6 +37,8 @@ def generate(
     constraints: Optional[List[Optional[ConstrainedHypothesis]]] = None,
     prune_factor: Optional[int] = None,
     sat_tolerance: Optional[int] = None,
+    beta: Optional[int] = None,
+    early_stop: Optional[float] = None,
     **model_specific_kwargs
 ) -> torch.LongTensor:
     r""" Generates sequences for models with a LM head. The method currently supports greedy decoding, beam-search decoding, sampling with temperature, sampling with top-k or nucleus sampling.
@@ -339,6 +341,8 @@ def generate(
             constraints=constraints,
             prune_factor=prune_factor,
             sat_tolerance=sat_tolerance,
+            beta=beta,
+            early_stop=early_stop,
             model_specific_kwargs=model_specific_kwargs,
         )
     else:
@@ -354,7 +358,7 @@ class BeamHypotheses(object):
         self.max_length = max_length - 1  # ignoring bos_token
         self.length_penalty = length_penalty
         self.early_stopping = early_stopping
-        self.num_beams = num_beams * 3
+        self.num_beams = num_beams * 2
         self.beams = []
         self.worst_score = 1e9
 
@@ -398,10 +402,6 @@ class BeamHypotheses(object):
             return ret
 
 
-# from transformers import AutoTokenizer, AutoModelWithLMHead
-# tokenizer = AutoTokenizer.from_pretrained('ctrl')
-
-
 def _generate_beam_search(
         self,
         input_ids,
@@ -431,12 +431,23 @@ def _generate_beam_search(
         constraints,
         prune_factor,
         sat_tolerance,
+        beta,
+        early_stop,
         model_specific_kwargs,
 ):
     """ Generate sequences for each example with beam search.
     """
     # end condition
     cons_eos = constraints[0].eos()
+
+    last_non_masked_idx = (torch.sum(attention_mask, dim=1) - 1).int()
+    start_idx = (last_non_masked_idx).view(-1, 1).repeat(1, self.config.vocab_size).unsqueeze(1).long()
+
+    init_length = cur_len
+    position_ids = torch.tensor([list(range(init_length)) for i in range(input_ids.shape[0])])
+    for i, position_ids_slice in enumerate(position_ids):
+        position_ids_slice[last_non_masked_idx[i]:] = position_ids_slice[last_non_masked_idx[i]]
+    position_ids = position_ids.to(input_ids.device)
 
     # generated hypotheses
     generated_hyps = [
@@ -465,8 +476,14 @@ def _generate_beam_search(
         model_inputs = self.prepare_inputs_for_generation(
             input_ids, past=past, attention_mask=attention_mask, use_cache=use_cache, **model_specific_kwargs
         )
+        model_inputs["attention_mask"] = attention_mask
+        model_inputs["position_ids"] = position_ids[:, -1].unsqueeze(-1) if past else position_ids
+
         outputs = self(**model_inputs)  # (batch_size * num_beams, cur_len, vocab_size)
-        next_token_logits = outputs[0][:, -1, :]  # (batch_size * num_beams, vocab_size)
+        if cur_len == init_length:
+            next_token_logits = outputs[0].gather(1, start_idx).squeeze(1)
+        else:
+            next_token_logits = outputs[0][:, -1, :]  # (batch_size * num_beams, vocab_size)
 
         # if model has past, then set the past variable to speed up decoding
         if self._use_cache(outputs, use_cache):
@@ -516,10 +533,12 @@ def _generate_beam_search(
                                                                                pad_token_id=pad_token_id,
                                                                                prune_factor=prune_factor,
                                                                                sat_tolerance=sat_tolerance,
+                                                                               beta=beta,
                                                                                inactive=np.zeros((batch_size, num_beams)),
                                                                                scores=full_scores,
                                                                                hypotheses=constraints,
-                                                                               num_fill=2 * num_beams)
+                                                                               num_fill=2 * num_beams,
+                                                                               early_stop=early_stop)
 
             next_scores = torch.tensor(pick_scores, dtype=next_scores.dtype, device=next_scores.device)
             next_tokens = torch.tensor(pick_tokens, dtype=next_tokens.dtype, device=next_tokens.device)
@@ -584,8 +603,6 @@ def _generate_beam_search(
                 elif done[batch_idx]:
                     pad_candidate = (0, pad_token_id, 0, None, -1)
                 else:
-                    import ipdb
-                    ipdb.set_trace()
                     raise ValueError('impossible search state')
                 next_sent_beam += [pad_candidate] * (num_beams - len(next_sent_beam))
 
@@ -609,6 +626,8 @@ def _generate_beam_search(
         # re-order batch and update current length
         input_ids = input_ids[beam_idx, :]
         input_ids = torch.cat([input_ids, beam_tokens.unsqueeze(1)], dim=-1)
+        position_ids = position_ids[beam_idx, :]
+        position_ids = torch.cat([position_ids, (position_ids[:, -1] + 1).unsqueeze(-1)], dim=1)
         cur_len = cur_len + 1
 
         # re-order internal states

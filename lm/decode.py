@@ -5,6 +5,8 @@ import torch
 import logging
 import numpy as np
 from tqdm import tqdm
+from pathlib import Path
+from os import path
 from transformers import AutoTokenizer, AutoModelWithLMHead
 
 from lm.generate import generate
@@ -35,12 +37,17 @@ def main():
     parser.add_argument('--length_penalty', type=float, default=0.6,
                         help="length penalty for beam search")
 
-    parser.add_argument('--prune_factor', type=float, default=50,
+    parser.add_argument('--prune_factor', type=int, default=50,
                         help="fraction of candidates to keep based on score")
     parser.add_argument('--sat_tolerance', type=int, default=2,
                         help="minimum satisfied clause of valid candidates")
+    parser.add_argument('--beta', type=float, default=0.,
+                        help="reward factor for in progress constraint")
+    parser.add_argument('--early_stop', type=float, default=None,
+                        help="temperature to fuse word embedding for continuous looking ahead")
 
     args = parser.parse_args()
+    print(args)
 
     print(f"Decoding with: {args.model_name}")
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
@@ -53,49 +60,57 @@ def main():
     period_id = [tokenizer.convert_tokens_to_ids('.')]
     period_id.append(tokenizer.convert_tokens_to_ids('Ġ.'))
     eos_ids = [tokenizer.eos_token_id] + period_id
+    PAD_ID = tokenizer.convert_tokens_to_ids('<pad>')
 
     with open(args.input_path) as fin:
         input_lines = [line.split('=')[0] + "=" for line in fin.read().splitlines()]
 
-    with open(args.constraint_file, 'r') as f:
-        constraints_list = []
-        for line in f:
-            constraints = []
-            for concept in json.loads(line):
-                constraints.append([f' {c}' for c in concept])
-            constraints_list.append(constraints)
+    def read_constraints(file_name):
+        cons_list = []
+        with open(file_name, 'r') as f:
+            for line in f:
+                cons = []
+                for concept in json.loads(line):
+                    cons.append([f' {c}' for c in concept])
+                cons_list.append(cons)
+        return cons_list
 
-    input_lines = [tokenizer.tokenize(x) for x in input_lines]
+    constraints_list = read_constraints(args.constraint_file)
+
+    input_lines = [tokenizer.convert_tokens_to_ids(tokenizer.tokenize(x)) for x in input_lines]
     constraints_list = utils_seq2seq.tokenize_constraints(tokenizer, constraints_list)
-    input_lines = sorted(list(enumerate(input_lines)),
-                         key=lambda x: len(x[1]))
-    index = [x[0] for x in input_lines]
-    constraints_list = [constraints_list[i] for i in index]
-    output_lines = [""] * len(input_lines)
+
+    if path.exists(args.output_file):
+        count = len(open(args.output_file, 'r').readlines())
+        fout = Path(args.output_file).open("a", encoding="utf-8")
+        input_lines = input_lines[count:]
+        constraints_list = constraints_list[count:]
+    else:
+        fout = Path(args.output_file).open("w", encoding="utf-8")
     total_batch = math.ceil(len(input_lines) / args.batch_size)
     next_i = 0
 
     with tqdm(total=total_batch) as pbar:
         while next_i < len(input_lines):
-            full_chunk = input_lines[next_i:next_i + args.batch_size]
-            prompt_tokens_num = sorted(set([len(x[1]) for x in full_chunk]))
-            step_len = args.batch_size
-            if len(prompt_tokens_num) > 1:
-                step_len = len([x for x in full_chunk if len(x[1]) == prompt_tokens_num[0]])
-
-            _chunk = input_lines[next_i:next_i + step_len]
-            constraints = init_batch(raw_constraints=constraints_list[next_i:next_i + step_len],
+            _chunk = input_lines[next_i:next_i + args.batch_size]
+            constraints = init_batch(raw_constraints=constraints_list[next_i:next_i + args.batch_size],
                                      beam_size=args.beam_size,
                                      eos_id=eos_ids)
-            buf_id = [x[0] for x in _chunk]
-            buf = [x[1] for x in _chunk]
-            next_i += step_len
+            buf = _chunk
+            next_i += args.batch_size
 
-            input_ids = torch.stack([torch.from_numpy(np.array(tokenizer.convert_tokens_to_ids(x))) for x in buf])
+            max_len = max([len(x) for x in buf])
+            buf = [x + [PAD_ID] * (max_len - len(x)) for x in buf]
+
+            input_ids = torch.stack([torch.from_numpy(np.array(x)) for x in buf])
             input_ids = input_ids.to('cuda')
+            attention_mask = (~torch.eq(input_ids, PAD_ID)).int()
+            attention_mask = attention_mask.to('cuda')
 
             outputs = generate(self=model,
                                input_ids=input_ids,
+                               attention_mask=attention_mask,
+                               pad_token_id=PAD_ID,
                                min_length=args.min_tgt_length,
                                max_length=args.max_tgt_length,
                                num_beams=args.beam_size,
@@ -103,21 +118,20 @@ def main():
                                length_penalty=args.length_penalty,
                                constraints=constraints,
                                prune_factor=args.prune_factor,
-                               sat_tolerance=args.sat_tolerance)
+                               sat_tolerance=args.sat_tolerance,
+                               beta=args.beta,
+                               early_stop=args.early_stop,
+            )
 
-            prompt = [tokenizer.convert_tokens_to_string(x) for x in buf]
+            prompt = [tokenizer.decode(x) for x in buf]
             output_sequences = [tokenizer.decode(o).split('<|endoftext|>')[0].split(prompt[i])[-1].replace('=', '').strip()
                                 for i, o in enumerate(outputs)]
 
-            for i in range(len(buf)):
-                output_lines[buf_id[i]] = output_sequences[i]
+            for hypothesis in output_sequences:
+                fout.write(hypothesis.strip().replace('<|endoftext|>', '') + "\n")
+                fout.flush()
+
             pbar.update(1)
-
-    with open(args.output_file, "w", encoding="utf-8") as fout:
-        for l in output_lines:
-            fout.write(l)
-            fout.write("\n")
-
 
 if __name__ == "__main__":
     main()
