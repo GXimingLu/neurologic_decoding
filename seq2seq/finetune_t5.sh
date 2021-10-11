@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DATA_DIR='comGen_data'
+DATA_DIR='../dataset/seq2seq'
 OUTPUT_DIR_NAME='finetune_model/t5-large'
 CURRENT_DIR=${PWD}
 OUTPUT_DIR=${CURRENT_DIR}/${OUTPUT_DIR_NAME}

@@ -3,7 +3,7 @@
 # path of training data
 TRAIN_FILE='../dataset/s2s/commongen.train.json'
 # folder used to save fine-tuned checkpoints
-OUTPUT_DIR='finetune_model/unilm_v2_large'
+OUTPUT_DIR=$1
 # folder used to cache package dependencies
 CACHE_DIR='tmp'
 

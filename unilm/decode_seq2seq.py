@@ -120,10 +120,14 @@ def main():
     parser.add_argument('--ngram_size', type=int, default=3)
     parser.add_argument('--max_tgt_length', type=int, default=128,
                         help="maximum length of target sequence")
-    parser.add_argument('--prune_factor', type=float, default=50,
+    parser.add_argument('--prune_factor', type=int, default=50,
                         help="fraction of candidates to keep based on score")
     parser.add_argument('--sat_tolerance', type=int, default=2,
                         help="minimum satisfied clause of valid candidates")
+    parser.add_argument('--beta', type=float, default=0.,
+                        help="reward factor for in progress constraint")
+    parser.add_argument('--early_stop', type=float, default=None,
+                        help="optional early stop if all constraints are satisfied")
 
     args = parser.parse_args()
 
@@ -172,7 +176,7 @@ def main():
         model_recover = torch.load(model_recover_path)
         model = model_class.from_pretrained(args.model_name_or_path, state_dict=model_recover, config=config, mask_word_id=mask_word_id, search_beam_size=args.beam_size, length_penalty=args.length_penalty,
                                             eos_id=eos_word_ids, sos_id=sos_word_id, forbid_duplicate_ngrams=args.forbid_duplicate_ngrams, forbid_ignore_set=forbid_ignore_set, ngram_size=args.ngram_size,
-                                            min_len=args.min_len, prune_factor=args.prune_factor, sat_tolerance=args.sat_tolerance)
+                                            min_len=args.min_len, prune_factor=args.prune_factor, sat_tolerance=args.sat_tolerance, beta=args.beta, early_stop=args.early_stop)
         del model_recover
 
         model.to(device)

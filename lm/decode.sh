@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export PYTHONPATH=/home/ximinglu/open_source
-
 DATA_DIR='../dataset'
 DEVICES=$1
 SPLIT=$2

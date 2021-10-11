@@ -15,7 +15,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     raw_file = open(args.input_file, 'r')
-    factor_file = open(f'/home/ximingl/comGen/dataset/clean/commongen.{args.split}.factor.txt', 'r')
+    factor_file = open(f'dataset/clean/commongen.{args.split}.factor.txt', 'r')
     output_file = open(args.output_file, 'a')
 
     for l, f in tqdm(zip(raw_file, factor_file)):

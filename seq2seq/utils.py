@@ -8,7 +8,6 @@ from logging import getLogger
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List
 
-import git
 import numpy as np
 import torch
 from rouge_score import rouge_scorer, scoring

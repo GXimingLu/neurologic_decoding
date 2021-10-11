@@ -3,7 +3,7 @@
 # path of training data
 TRAIN_FILE='../dataset/s2s/commongen.train.json'
 # folder used to save fine-tuned checkpoints
-OUTPUT_DIR='finetune_model/bert_large_debug'
+OUTPUT_DIR=$1
 # folder used to cache package dependencies
 CACHE_DIR='tmp'
 

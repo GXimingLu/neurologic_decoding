@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from s2s_lm.s2s_ft.modeling_decoding import BertForSeq2SeqDecoder
-from baseline.topK import topk
+from unilm.topK import topk
 
 
 class Candidate:
@@ -44,13 +44,15 @@ class UnilmConstrainDecode(BertForSeq2SeqDecoder):
     def __init__(self, config, mask_word_id=0, num_labels=2, num_rel=0,
                  search_beam_size=1, length_penalty=1.0, eos_id=0, sos_id=0,
                  forbid_duplicate_ngrams=False, forbid_ignore_set=None, ngram_size=3, min_len=0, mode="s2s",
-                 pos_shift=False, prune_factor=2, sat_tolerance=2):
+                 pos_shift=False, prune_factor=50, sat_tolerance=2, beta=0., early_stop=1.5):
         super(UnilmConstrainDecode, self).__init__(config, mask_word_id, num_labels, num_rel,
                                                    search_beam_size, length_penalty, eos_id, sos_id,
                                                    forbid_duplicate_ngrams, forbid_ignore_set, ngram_size,
                                                    min_len, mode, pos_shift)
         self.prune_factor = prune_factor
         self.sat_tolerance = sat_tolerance
+        self.beta = beta
+        self.early_stop = early_stop
         self.ngram_size = 2
 
     def decode(self, input_ids, token_type_ids, position_ids, attention_mask, task_idx=None, mask_qkv=None, constraints=None):
@@ -148,6 +150,8 @@ class UnilmConstrainDecode(BertForSeq2SeqDecoder):
                                                                                  beam_size=K,
                                                                                  prune_factor=self.prune_factor,
                                                                                  sat_tolerance=self.sat_tolerance,
+                                                                                 beta=self.beta,
+                                                                                 early_stop=self.early_stop,
                                                                                  inactive=inactive.cpu().numpy(),
                                                                                  scores=full_scores.cpu().numpy(),
                                                                                  hypotheses=constraints,

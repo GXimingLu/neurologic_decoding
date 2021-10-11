@@ -99,7 +99,7 @@ def _sequential_topk(timestep: int,
                      sequence_scores: np.array,
                      num_fill: int = None,
                      early_stop: float = None) -> Tuple[np.array, np.array, np.array,
-                                                         List[ConstrainedHypothesis], List[int]]:
+                                                        List[ConstrainedHypothesis], List[int]]:
     """
     Builds a new topk list such that the beam contains hypotheses having completed different numbers of constraints.
     These items are built from three different types: (1) the best items across the whole

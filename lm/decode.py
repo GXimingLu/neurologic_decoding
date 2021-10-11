@@ -44,7 +44,7 @@ def main():
     parser.add_argument('--beta', type=float, default=0.,
                         help="reward factor for in progress constraint")
     parser.add_argument('--early_stop', type=float, default=None,
-                        help="temperature to fuse word embedding for continuous looking ahead")
+                        help="optional early stop if all constraints are satisfied")
 
     args = parser.parse_args()
     print(args)
@@ -120,8 +120,7 @@ def main():
                                prune_factor=args.prune_factor,
                                sat_tolerance=args.sat_tolerance,
                                beta=args.beta,
-                               early_stop=args.early_stop,
-            )
+                               early_stop=args.early_stop)
 
             prompt = [tokenizer.decode(x) for x in buf]
             output_sequences = [tokenizer.decode(o).split('<|endoftext|>')[0].split(prompt[i])[-1].replace('=', '').strip()

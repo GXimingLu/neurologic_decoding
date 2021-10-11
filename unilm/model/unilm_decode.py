@@ -44,12 +44,14 @@ class UnilmConstrainDecode(UnilmForSeq2SeqDecode):
     def __init__(self, config, mask_word_id=0,
                  search_beam_size=1, length_penalty=1.0, eos_id=0, sos_id=0,
                  forbid_duplicate_ngrams=False, forbid_ignore_set=None, ngram_size=3, min_len=0,
-                 prune_factor=2, sat_tolerance=2):
+                 prune_factor=50, sat_tolerance=2, beta=0., early_stop=1.5):
         super(UnilmConstrainDecode, self).__init__(config, mask_word_id, search_beam_size, length_penalty, eos_id,
                                                    sos_id, forbid_duplicate_ngrams, forbid_ignore_set, ngram_size,
                                                    min_len)
         self.prune_factor = prune_factor
         self.sat_tolerance = sat_tolerance
+        self.beta = beta
+        self.early_stop = early_stop
         self.ngram_size = 2
 
     def decode(self, input_ids, token_type_ids, position_ids, attention_mask, constraints):
@@ -90,7 +92,7 @@ class UnilmConstrainDecode(UnilmForSeq2SeqDecode):
 
             curr_token_type_ids = token_type_ids[:, start_pos:next_pos + 1]
             curr_attention_mask = attention_mask[:,
-                                                 start_pos:next_pos + 1, :next_pos + 1]
+                                  start_pos:next_pos + 1, :next_pos + 1]
             curr_position_ids = position_ids[:, start_pos:next_pos + 1]
             new_embedding, new_encoded_layers, _ = \
                 self.bert(x_input_ids, curr_token_type_ids, curr_position_ids, curr_attention_mask,
@@ -133,14 +135,13 @@ class UnilmConstrainDecode(UnilmForSeq2SeqDecode):
 
             if constraints is not None:
                 inactive = beam_masks[-1] if total_scores else torch.zeros(batch_size, K)
-                # if partial_seqs and len(partial_seqs[0]) >= 8:
-                #     import ipdb
-                #     ipdb.set_trace()
                 best_ids, best_word_ids, seq_scores, hypotheses, num_mets = topk(timestep=len(step_back_ptrs),
                                                                                  batch_size=batch_size,
                                                                                  beam_size=K,
                                                                                  prune_factor=self.prune_factor,
                                                                                  sat_tolerance=self.sat_tolerance,
+                                                                                 beta=self.beta,
+                                                                                 early_stop=self.early_stop,
                                                                                  inactive=inactive.cpu().numpy(),
                                                                                  scores=full_scores.cpu().numpy(),
                                                                                  hypotheses=constraints,
@@ -148,9 +149,7 @@ class UnilmConstrainDecode(UnilmForSeq2SeqDecode):
                                                                                  best_ids=back_ptrs.cpu().numpy(),
                                                                                  best_word_ids=k_ids.cpu().numpy(),
                                                                                  seq_scores=k_scores.cpu().numpy())
-                # if partial_seqs and len(partial_seqs[0]) >= 2:
-                #     import ipdb
-                #     ipdb.set_trace()
+
                 back_ptrs = torch.tensor(best_ids, dtype=back_ptrs.dtype, device=back_ptrs.device)
                 k_ids = torch.tensor(best_word_ids, dtype=k_ids.dtype, device=k_ids.device)
                 k_scores = torch.tensor(seq_scores, dtype=k_scores.dtype, device=k_scores.device)

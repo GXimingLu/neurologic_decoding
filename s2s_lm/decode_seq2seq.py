@@ -26,7 +26,7 @@ from s2s_lm.s2s_ft.tokenization_unilm import UnilmTokenizer
 
 from s2s_lm.s2s_ft.tokenization_minilm import MinilmTokenizer
 
-from baseline import utils_seq2seq
+from unilm import utils_seq2seq
 from lexical_constraints import init_batch
 
 TOKENIZER_CLASSES = {
@@ -116,10 +116,14 @@ def main():
                         choices=["s2s", "l2r", "both"])
     parser.add_argument('--max_tgt_length', type=int, default=128,
                         help="maximum length of target sequence")
-    parser.add_argument('--prune_factor', type=float, default=2,
+    parser.add_argument('--prune_factor', type=int, default=50,
                         help="fraction of candidates to keep based on score")
     parser.add_argument('--sat_tolerance', type=int, default=2,
                         help="minimum satisfied clause of valid candidates")
+    parser.add_argument('--beta', type=float, default=0.,
+                        help="reward factor for in progress constraint")
+    parser.add_argument('--early_stop', type=float, default=None,
+                        help="optional early stop if all constraints are satisfied")
     parser.add_argument('--s2s_special_token', action='store_true',
                         help="New special tokens ([S2S_SEP]/[S2S_CLS]) of S2S.")
     parser.add_argument('--s2s_add_segment', action='store_true',
@@ -132,6 +136,7 @@ def main():
                         help="Where do you want to store the pre-trained models downloaded from s3")
 
     args = parser.parse_args()
+    print(args)
 
     if args.need_score_traces and args.beam_size <= 1:
         raise ValueError(
@@ -201,8 +206,8 @@ def main():
             length_penalty=args.length_penalty, eos_id=eos_word_ids, sos_id=sos_word_id,
             forbid_duplicate_ngrams=args.forbid_duplicate_ngrams, forbid_ignore_set=forbid_ignore_set,
             ngram_size=args.ngram_size, min_len=args.min_len, mode=args.mode,
-            max_position_embeddings=args.max_seq_length, pos_shift=args.pos_shift, 
-        )
+            max_position_embeddings=args.max_seq_length, pos_shift=args.pos_shift,
+            prune_factor=args.prune_factor, sat_tolerance=args.sat_tolerance, beta=args.beta, early_stop=args.early_stop)
 
         if args.fp16:
             model.half()

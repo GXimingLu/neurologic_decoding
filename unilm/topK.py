@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import math
 from scipy.stats import rankdata
 from operator import attrgetter
 from typing import Dict, List, Optional, Tuple, Set, Union
@@ -9,8 +9,10 @@ from lexical_constraints import ConstrainedHypothesis, ConstrainedCandidate
 def topk(timestep: int,
          batch_size: int,
          beam_size: int,
-         prune_factor: float,
-         sat_tolerance: float,
+         prune_factor: int,
+         sat_tolerance: int,
+         beta: float,
+         early_stop: float,
          inactive: np.array,
          scores: np.array,
          hypotheses: List[ConstrainedHypothesis],
@@ -46,6 +48,8 @@ def topk(timestep: int,
                                                                                      beam_size,
                                                                                      prune_factor,
                                                                                      sat_tolerance,
+                                                                                     beta,
+                                                                                     early_stop,
                                                                                      inactive[sentno],
                                                                                      scores[sentno],
                                                                                      hypotheses[rows],
@@ -59,8 +63,10 @@ lambda_1 = 0.0
 
 def _sequential_topk(timestep: int,
                      beam_size: int,
-                     prune_factor: float,
-                     sat_tolerance: float,
+                     prune_factor: int,
+                     sat_tolerance: int,
+                     beta: float,
+                     early_stop: float,
                      inactive: np.array,
                      scores: np.array,
                      hypotheses: List[ConstrainedHypothesis],
@@ -104,7 +110,6 @@ def _sequential_topk(timestep: int,
     hit = np.stack([best_ids, best_word_ids], axis=1).tolist()
     # For each hypothesis, we add (2) all the constraints that could follow it and
     # (3) the best item (constrained or not) in that row
-    best_next = np.argmax(scores, axis=1)
     for row in range(beam_size if timestep > 0 else 1):
         if inactive[row]:
             continue
@@ -131,26 +136,44 @@ def _sequential_topk(timestep: int,
                 else:
                     candidates.add(cand)
 
-    # Sort the candidates.
-    sorted_candidates = sorted(candidates, key=attrgetter('score'), reverse=True)
-    max_satisfy = max([x.hypothesis.num_met() for x in sorted_candidates])
-    sorted_candidates = [x for x in sorted_candidates if x.hypothesis.num_met() >= max_satisfy - sat_tolerance]
+        # Add finished candidates in finished set:
+        if hyp.finished() and early_stop is not None:
+            best_k = np.argsort(scores[row])[::-1][:int(beam_size * early_stop)]
+            for col in best_k:
+                if col in hyp.eos():
+                    new_item = hyp.advance(col)
+                    score = scores[row, col]
+                    cand = ConstrainedCandidate(row, col, score, new_item)
+                    finished_candidates.add(cand)
 
-    # Bucket candidates in each group by met order
-    all_orders = set([x.hypothesis.met_order() for x in sorted_candidates])
-    grouped_order_candidates = [[x for x in sorted_candidates if x.hypothesis.met_order() == o] for o in all_orders]
-
-    # Group the top_i candidate of each group in chunk
     chunk_candidates = []
-    num_chunk = max([len(x) for x in grouped_order_candidates])
-    for i in range(num_chunk):
-        chunk_i = []
-        for g in grouped_order_candidates:
-            if len(g) > i:
-                chunk_i.append(g[i])
-        chunk_candidates.append(chunk_i)
-    # Sort candidates in each chunk by score
-    chunk_candidates = [sorted(x, key=attrgetter('score'), reverse=True) for x in chunk_candidates]
+    if candidates:
+        # Sort the candidates.
+        sorted_candidates = sorted(candidates, key=attrgetter('score'), reverse=True)
+        max_satisfy = max([x.hypothesis.num_met() for x in sorted_candidates])
+        sorted_candidates = [x for x in sorted_candidates if x.hypothesis.num_met() >= max_satisfy - sat_tolerance]
+
+        for cand in sorted_candidates:
+            cand.rank = cand.score / (timestep + 1)
+            if cand.hypothesis.max_process:
+                cand.rank -= beta * math.log(cand.hypothesis.max_process)
+        sorted_candidates = sorted(sorted_candidates, key=attrgetter('rank'), reverse=True)
+
+        # Bucket candidates in each group by met order
+        all_orders = set([x.hypothesis.met_order() for x in sorted_candidates])
+        grouped_order_candidates = [[x for x in sorted_candidates if x.hypothesis.met_order() == o] for o in all_orders]
+
+        # Group the top_i candidate of each group in chunk
+        chunk_candidates = []
+        num_chunk = max([len(x) for x in grouped_order_candidates])
+        for i in range(num_chunk):
+            chunk_i = []
+            for g in grouped_order_candidates:
+                if len(g) > i:
+                    chunk_i.append(g[i])
+            chunk_candidates.append(chunk_i)
+        # Sort candidates in each chunk by score
+        chunk_candidates = [sorted(x, key=attrgetter('rank'), reverse=True) for x in chunk_candidates]
 
     pruned_candidates = sorted(finished_candidates, key=attrgetter('score'), reverse=True)[:beam_size]
     for chunk in chunk_candidates:

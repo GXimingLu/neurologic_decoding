@@ -75,7 +75,9 @@ def generate_summaries_or_translations(
                              length_penalty=args.length_penalty,
                              constraints=constraints,
                              prune_factor=args.prune_factor,
-                             sat_tolerance=args.sat_tolerance)
+                             sat_tolerance=args.sat_tolerance,
+                             beta=args.beta,
+                             early_stop=args.early_stop)
         dec = tokenizer.batch_decode(summaries, skip_special_tokens=True, clean_up_tokenization_spaces=False)
         for hypothesis in dec:
             fout.write(hypothesis.strip() + "\n")
@@ -109,8 +111,10 @@ def run_generate():
     parser.add_argument(
         "--n_obs", type=int, default=-1, required=False, help="How many observations. Defaults to all."
     )
-    parser.add_argument('--prune_factor', type=float, default=50, help="fraction of candidates to keep based on score")
+    parser.add_argument('--prune_factor', type=int, default=50, help="fraction of candidates to keep based on score")
     parser.add_argument('--sat_tolerance', type=int, default=2, help="minimum satisfied clause of valid candidates")
+    parser.add_argument('--beta', type=float, default=0., help="reward factor for in progress constraint")
+    parser.add_argument('--early_stop', type=float, default=None, help="optional early stop if all constraints are satisfied")
 
     parser.add_argument("--fp16", action="store_true")
     args = parser.parse_args()

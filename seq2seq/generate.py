@@ -37,6 +37,8 @@ def generate(
     constraints: Optional[List[Optional[ConstrainedHypothesis]]] = None,
     prune_factor: Optional[int] = None,
     sat_tolerance: Optional[int] = None,
+    beta: Optional[int] = None,
+    early_stop: Optional[float] = None,
     **model_specific_kwargs
 ) -> torch.LongTensor:
     r""" Generates sequences for models with a LM head. The method currently supports greedy decoding, beam-search decoding, sampling with temperature, sampling with top-k or nucleus sampling.
@@ -339,6 +341,8 @@ def generate(
             constraints=constraints,
             prune_factor=prune_factor,
             sat_tolerance=sat_tolerance,
+            beta=beta,
+            early_stop=early_stop,
             model_specific_kwargs=model_specific_kwargs,
         )
     else:
@@ -398,10 +402,6 @@ class BeamHypotheses(object):
             return ret
 
 
-# from transformers import AutoTokenizer, AutoModelWithLMHead
-# tokenizer = AutoTokenizer.from_pretrained('ctrl')
-
-
 def _generate_beam_search(
         self,
         input_ids,
@@ -431,6 +431,8 @@ def _generate_beam_search(
         constraints,
         prune_factor,
         sat_tolerance,
+        beta,
+        early_stop,
         model_specific_kwargs,
 ):
     """ Generate sequences for each example with beam search.
@@ -462,8 +464,6 @@ def _generate_beam_search(
     num_mets = [x.num_met() for x in constraints]
 
     while cur_len < max_length:
-        import ipdb
-        ipdb.set_trace()
         model_inputs = self.prepare_inputs_for_generation(
             input_ids, past=past, attention_mask=attention_mask, use_cache=use_cache, **model_specific_kwargs
         )
@@ -518,10 +518,12 @@ def _generate_beam_search(
                                                                                pad_token_id=pad_token_id,
                                                                                prune_factor=prune_factor,
                                                                                sat_tolerance=sat_tolerance,
+                                                                               beta=beta,
                                                                                inactive=np.zeros((batch_size, num_beams)),
                                                                                scores=full_scores,
                                                                                hypotheses=constraints,
-                                                                               num_fill=2 * num_beams)
+                                                                               num_fill=2 * num_beams,
+                                                                               early_stop=early_stop)
 
             next_scores = torch.tensor(pick_scores, dtype=next_scores.dtype, device=next_scores.device)
             next_tokens = torch.tensor(pick_tokens, dtype=next_tokens.dtype, device=next_tokens.device)
@@ -586,8 +588,6 @@ def _generate_beam_search(
                 elif done[batch_idx]:
                     pad_candidate = (0, pad_token_id, 0, None, -1)
                 else:
-                    import ipdb
-                    ipdb.set_trace()
                     raise ValueError('impossible search state')
                 next_sent_beam += [pad_candidate] * (num_beams - len(next_sent_beam))
 
