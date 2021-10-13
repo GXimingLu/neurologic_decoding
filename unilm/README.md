@@ -3,6 +3,7 @@ This directory contains code to run neurologic decoding on top of Unilm
 * Activate conda environment
     ```
     conda activate unilm
+    export PYTHONPATH=${HOME_PATH}/neurologic_decoding
     ```
 
 * Run beam search baseline 

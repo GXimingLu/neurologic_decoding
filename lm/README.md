@@ -3,6 +3,7 @@ This directory contains code to run neurologic decoding on top of GPT2
 * Activate conda environment
     ```
     conda activate hug
+    export PYTHONPATH=${HOME_PATH}/neurologic_decoding
     ```
 
 * Run beam search baseline 

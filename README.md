@@ -12,7 +12,7 @@ We suggest using conda to setup environment. With conda installed, create three 
     ```
 * Fairseq
    
-    You need to first replace ``HOME_PATH`` in [fairseq.yml](fairseq.yml) with your home path. 
+    You need to first replace ``${HOME_PATH}`` in [fairseq.yml](fairseq.yml) with your home path. 
     
     ``
     conda env create -f fairseq.yml
@@ -22,7 +22,7 @@ We suggest using conda to setup environment. With conda installed, create three 
    <br><br/>  
 * Unilm
 
-    You need to first replace ``HOME_PATH`` in [unilm.yml](unilm.yml) with your home path.
+    You need to first replace ``${HOME_PATH}`` in [unilm.yml](unilm.yml) with your home path.
     
     ``
     conda env create -f unilm.yml

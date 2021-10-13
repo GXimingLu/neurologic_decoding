@@ -4,6 +4,7 @@ You need to choose one to decode and comment out the other in [beam_search.sh](b
 * Activate conda environment
     ```
     conda activate fairseq
+    export PYTHONPATH=${HOME_PATH}/neurologic_decoding
     ```
 
 * Run beam search baseline 

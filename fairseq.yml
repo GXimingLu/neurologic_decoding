@@ -222,4 +222,4 @@ dependencies:
     - wrapt==1.11.2
     - xxhash==2.0.0
     - zipp==3.1.0
-prefix: HOME_PATH/anaconda3/envs/fairseq
+prefix: ${HOME_PATH}/anaconda3/envs/fairseq
