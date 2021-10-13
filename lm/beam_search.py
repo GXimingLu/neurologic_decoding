@@ -41,7 +41,7 @@ def main():
     model = model.to('cuda')
 
     with open(args.input_path) as fin:
-        input_lines = [line for line in fin.read().splitlines()]
+        input_lines = [line.split('=')[0] + "=" for line in fin.read().splitlines()]
 
     input_lines = [tokenizer.tokenize(x) for x in input_lines]
     input_lines = sorted(list(enumerate(input_lines)),
@@ -71,12 +71,9 @@ def main():
                                      max_length=args.max_tgt_length,
                                      num_beams=args.beam_size,
                                      no_repeat_ngram_size=args.ngram_size,
-                                     length_penalty=args.length_penalty,
-                                     top_k=2,
-                                     do_sample=True)
-
+                                     length_penalty=args.length_penalty)
             prompt = [tokenizer.convert_tokens_to_string(x) for x in buf]
-            output_sequences = [tokenizer.decode(o).split('<|endoftext|>')[0].split(prompt[i])[-1].strip()
+            output_sequences = [tokenizer.decode(o).split('<|endoftext|>')[0].split(prompt[i])[-1].replace('=', '').strip()
                                 for i, o in enumerate(outputs)]
 
             for i in range(len(buf)):
