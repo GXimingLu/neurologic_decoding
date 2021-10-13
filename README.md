@@ -17,7 +17,6 @@ We suggest using conda to setup environment. With conda installed, create three 
     conda env create -f fairseq.yml
     ```
    You could also refer to installation instructions in [fairseq](https://github.com/pytorch/fairseq/tree/v0.10.1) repo.
-   
 2. Unilm
 
     You need to first replace ``HOME_PATH`` in [unilm.yml](unilm.yml) with your home path. 
