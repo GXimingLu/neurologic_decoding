@@ -5,11 +5,19 @@ This is the official repo for the paper ["Neurologic Decoding: (Un)supervised Ne
 ## Requirement
 We suggest using conda to setup environment. With conda installed, create three new environments:
 * Huggingface 
-    ```
+
+    ``
     conda create -n hug python=3.7
+    ``
+    
+    ``
     conda activate hug
+    ``
+    
+    ``
     pip install -r huggingface.txt
-    ```
+    ``
+  
 * Fairseq
    
     You need to first replace ``HOME_PATH`` in [fairseq.yml](fairseq.yml) with your home path. 
