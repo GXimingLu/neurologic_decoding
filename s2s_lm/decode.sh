@@ -28,15 +28,15 @@ CUDA_VISIBLE_DEVICES=${DEVICES} python decode_seq2seq.py \
 mv ${OUTPUT_FILE} ${OUTPUT_DIR}/
 
 # bert
-CUDA_VISIBLE_DEVICES=${DEVICES} python decode_seq2seq.py \
-  --model_type 'bert' --tokenizer_name 'bert-large-cased' \
-  --input_file ${INPUT_JSON} --split ${SPLIT} \
-  --constraint_file ../dataset/clean/constraint/${SPLIT}.constraint.json \
-  --model_path ${MODEL_RECOVER_PATH} --config_path ${CONFIG_PATH} \
-  --max_seq_length 64 --max_tgt_length 32 \
-  --batch_size 64 --beam_size 20 --length_penalty 0.6 \
-  --forbid_duplicate_ngrams --forbid_ignore_word "." \
-  --prune_factor 50 --sat_tolerance 2 --beta 0 --early_stop 1.5 \
-  --output_file ${OUTPUT_FILE}
-
-mv ${OUTPUT_FILE} ${OUTPUT_DIR}/
+#CUDA_VISIBLE_DEVICES=${DEVICES} python decode_seq2seq.py \
+#  --model_type 'bert' --tokenizer_name 'bert-large-cased' \
+#  --input_file ${INPUT_JSON} --split ${SPLIT} \
+#  --constraint_file ../dataset/clean/constraint/${SPLIT}.constraint.json \
+#  --model_path ${MODEL_RECOVER_PATH} --config_path ${CONFIG_PATH} \
+#  --max_seq_length 64 --max_tgt_length 32 \
+#  --batch_size 64 --beam_size 20 --length_penalty 0.6 \
+#  --forbid_duplicate_ngrams --forbid_ignore_word "." \
+#  --prune_factor 50 --sat_tolerance 2 --beta 0 --early_stop 1.5 \
+#  --output_file ${OUTPUT_FILE}
+#
+#mv ${OUTPUT_FILE} ${OUTPUT_DIR}/

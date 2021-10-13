@@ -3,8 +3,8 @@
 DATA_DIR='../dataset'
 DEVICES=$1
 SPLIT=$2
-MODEL_RECOVER_PATH='finetune_model/gpt2-large/checkpoint-1800/'
-OUTPUT_FILE=$3
+MODEL_RECOVER_PATH=$3
+OUTPUT_FILE=$4
 
 # run decoding
 CUDA_VISIBLE_DEVICES=${DEVICES} python decode.py --model_name ${MODEL_RECOVER_PATH} \

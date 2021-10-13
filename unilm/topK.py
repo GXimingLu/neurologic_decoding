@@ -59,8 +59,6 @@ def topk(timestep: int,
     return best_ids, best_word_ids, seq_scores, hypotheses, num_mets
 
 
-lambda_1 = 0.0
-
 def _sequential_topk(timestep: int,
                      beam_size: int,
                      prune_factor: int,

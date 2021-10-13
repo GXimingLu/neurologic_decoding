@@ -14,7 +14,8 @@ character = ['dog', 'kid', 'crowd', 'toddler', 'player', 'worker', 'couple', 'la
              'pelican', 'redheade', 'bulldozer', 'audience', 'diver', 'turker', 'fireman', 'fisherman',
              'biker', 'female', 'skateboarder', 'daughter', 'hiker', 'dogs', 'onlooker', 'soldier', 'pedestrians',
              'workers', 'forecaster', 'dad', 'groomer', 'nurse', 'skier', 'writer', 'robot', 'machine', 'logo'
-             'spectator', 'athlete', 'friends']
+             'spectator', 'athlete', 'friends', 'customer', 'barber', 'gymnast', 'guests', 'instructor',
+             'mother', 'dealer', 'goalie', 'singer', 'skater', 'bartender', 'vendor']
 
 
 def add_article(x):

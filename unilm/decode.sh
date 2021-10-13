@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-export PYTHONPATH=/home/ximinglu/open_source
-
 DATA_DIR='../dataset/clean'
 DEVICES=$1
 EPOCH=$2

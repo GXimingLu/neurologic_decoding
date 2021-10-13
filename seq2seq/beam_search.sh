@@ -20,9 +20,9 @@ CUDA_VISIBLE_DEVICES=${DEVICES} python run_eval.py \
   --save_path "${OUTPUT_DIR}/${OUTPUT_FILE}" --score_path "${OUTPUT_DIR}/score.json"
 
 # t5-large
-CUDA_VISIBLE_DEVICES=${DEVICES} python run_eval.py \
-  --model_name ${MODEL_RECOVER_PATH} \
-  --input_path ${INPUT} --reference_path ${TARGET} \
-  --min_tgt_length 5 --max_tgt_length 32 \
-  --bs 32 --beam_size 20 --length_penalty 0.2 --ngram_size 3 \
-  --save_path "${OUTPUT_DIR}/${OUTPUT_FILE}" --score_path "${OUTPUT_DIR}/score.json"
+#CUDA_VISIBLE_DEVICES=${DEVICES} python run_eval.py \
+#  --model_name ${MODEL_RECOVER_PATH} \
+#  --input_path ${INPUT} --reference_path ${TARGET} \
+#  --min_tgt_length 5 --max_tgt_length 32 \
+#  --bs 32 --beam_size 20 --length_penalty 0.2 --ngram_size 3 \
+#  --save_path "${OUTPUT_DIR}/${OUTPUT_FILE}" --score_path "${OUTPUT_DIR}/score.json"

@@ -1,24 +1,28 @@
 import numpy as np
 import math
 import torch
-from scipy.stats import rankdata
 from operator import attrgetter
 from typing import Dict, List, Optional, Tuple, Set, Union
-
+from scipy.stats import rankdata
 from lexical_constraints import ConstrainedHypothesis, ConstrainedCandidate
 
+NEGATIVE_INF = -1000
 
 def topk_huggingface(timestep: int,
                      batch_size: int,
                      beam_size: int,
                      vocab_size: int,
                      pad_token_id: int,
-                     lambda_1: float,
-                     sat_tolerance: float,
+                     prune_factor: int,
+                     sat_tolerance: int,
+                     beta: float,
                      inactive: np.array,
                      scores: np.array,
                      hypotheses: List[ConstrainedHypothesis],
-                     num_fill: int) -> Tuple[np.array, np.array, List[List[Union[ConstrainedHypothesis, None]]], List[List[int]]]:
+                     num_fill: int,
+                     early_stop: float = None) -> Tuple[np.array, np.array,
+                                                        List[List[Union[ConstrainedHypothesis, None]]],
+                                                        List[List[int]]]:
     """
     Builds a new topk list such that the beam contains hypotheses having completed different numbers of constraints.
     These items are built from three different types: (1) the best items across the whole
@@ -67,15 +71,17 @@ def topk_huggingface(timestep: int,
         select_best_ids[sentno], select_best_word_ids[sentno], select_seq_scores[sentno],\
             select_hypotheses[sentno], select_num_mets[sentno] = _sequential_topk(timestep,
                                                                                   beam_size,
-                                                                                  lambda_1,
+                                                                                  prune_factor,
                                                                                   sat_tolerance,
+                                                                                  beta,
                                                                                   inactive[sentno],
                                                                                   scores[sentno],
                                                                                   hypotheses[rows],
                                                                                   best_ids[sentno],
                                                                                   best_word_ids[sentno],
                                                                                   seq_scores[sentno],
-                                                                                  num_fill=num_fill)
+                                                                                  num_fill=num_fill,
+                                                                                  early_stop=early_stop)
 
     select_raw_token_idx = select_best_ids * vocab_size + select_best_word_ids
     return select_seq_scores, select_raw_token_idx, select_hypotheses, select_num_mets
@@ -83,16 +89,18 @@ def topk_huggingface(timestep: int,
 
 def _sequential_topk(timestep: int,
                      beam_size: int,
-                     lambda_1: float,
-                     sat_tolerance: float,
+                     prune_factor: int,
+                     sat_tolerance: int,
+                     beta: float,
                      inactive: np.array,
                      scores: np.array,
                      hypotheses: List[ConstrainedHypothesis],
                      best_ids: np.array,
                      best_word_ids: np.array,
                      sequence_scores: np.array,
-                     num_fill: int = None) -> Tuple[np.array, np.array, np.array,
-                                                    List[ConstrainedHypothesis], List[int]]:
+                     num_fill: int = None,
+                     early_stop: float = None) -> Tuple[np.array, np.array, np.array,
+                                                        List[ConstrainedHypothesis], List[int]]:
     """
     Builds a new topk list such that the beam contains hypotheses having completed different numbers of constraints.
     These items are built from three different types: (1) the best items across the whole
@@ -130,7 +138,6 @@ def _sequential_topk(timestep: int,
     hit = np.stack([best_ids, best_word_ids], axis=1).tolist()
     # For each hypothesis, we add (2) all the constraints that could follow it and
     # (3) the best item (constrained or not) in that row
-    best_next = np.argmax(scores, axis=1)
     for row in range(beam_size):
         if inactive[row]:
             continue
@@ -140,7 +147,7 @@ def _sequential_topk(timestep: int,
         # (2) add all the constraints that could extend this
         nextones = hyp.positive_state.allowed()
 
-        # (3) add the single-best item after this (if it's valid)
+        # (3) add the best items (if it's valid)
         best_k = np.argsort(scores[row])[::-1][:beam_size]
         for col in best_k:
             if hyp.is_valid(col):
@@ -148,7 +155,7 @@ def _sequential_topk(timestep: int,
 
         # Now, create new candidates for each of these items
         for col in nextones:
-            if [row, col] not in hit and (rank[row, col] < 500000 and scores[row, col] > -1000):
+            if [row, col] not in hit and (rank[row, col] < prune_factor and scores[row, col] > NEGATIVE_INF):
                 new_item = hyp.advance(col)
                 score = scores[row, col]
                 cand = ConstrainedCandidate(row, col, score, new_item)
@@ -159,9 +166,9 @@ def _sequential_topk(timestep: int,
 
         # Add finished candidates in finished set:
         if hyp.finished():
-            best_k = np.argsort(scores[row])[::-1][:int(beam_size*10)]
+            best_k = np.argsort(scores[row])[::-1][:int(beam_size * early_stop)]
             for col in best_k:
-                if col in hyp.eos() and scores[row, col] > -1000:
+                if col in hyp.eos() and scores[row, col] > NEGATIVE_INF:
                     new_item = hyp.advance(col)
                     score = scores[row, col]
                     cand = ConstrainedCandidate(row, col, score, new_item)
@@ -186,14 +193,13 @@ def _sequential_topk(timestep: int,
     if candidates:
         # Sort the candidates.
         sorted_candidates = sorted(candidates, key=attrgetter('score'), reverse=True)
-
         max_satisfy = max([x.hypothesis.num_met() for x in sorted_candidates])
         sorted_candidates = [x for x in sorted_candidates if x.hypothesis.num_met() >= max_satisfy - sat_tolerance]
 
         for cand in sorted_candidates:
             cand.rank = cand.score / (timestep + 1)
             if cand.hypothesis.max_process:
-                cand.rank -= lambda_1 * math.log(cand.hypothesis.max_process)
+                cand.rank -= beta * math.log(cand.hypothesis.max_process)
         sorted_candidates = sorted(sorted_candidates, key=attrgetter('rank'), reverse=True)
 
         # Bucket candidates in each group by met order

@@ -9,7 +9,7 @@ from pathlib import Path
 from os import path
 from transformers import AutoTokenizer, AutoModelWithLMHead
 
-import utils
+from zero_shot import utils
 from zero_shot.generate import generate
 from lexical_constraints import init_batch
 
@@ -37,10 +37,14 @@ def main():
     parser.add_argument('--length_penalty', type=float, default=0.6,
                         help="length penalty for beam search")
 
-    parser.add_argument('--lambda_1', type=float, default=10,
+    parser.add_argument('--prune_factor', type=int, default=50,
                         help="fraction of candidates to keep based on score")
     parser.add_argument('--sat_tolerance', type=int, default=2,
                         help="minimum satisfied clause of valid candidates")
+    parser.add_argument('--beta', type=float, default=0.,
+                        help="reward factor for in progress constraint")
+    parser.add_argument('--early_stop', type=float, default=None,
+                        help="optional early stop if all constraints are satisfied")
 
     args = parser.parse_args()
     print(args)
@@ -93,8 +97,7 @@ def main():
             _chunk = input_lines[next_i:next_i + args.batch_size]
             constraints = init_batch(raw_constraints=constraints_list[next_i:next_i + args.batch_size],
                                      beam_size=args.beam_size,
-                                     eos_id=eos_ids,
-                                     input_id_list=_chunk)
+                                     eos_id=eos_ids)
             buf = _chunk
             next_i += args.batch_size
 
@@ -124,8 +127,10 @@ def main():
                                      no_repeat_ngram_size=args.ngram_size,
                                      length_penalty=args.length_penalty,
                                      constraints=advanced_constraints,
-                                     lambda_1=args.lambda_1,
-                                     sat_tolerance=args.sat_tolerance)
+                                     prune_factor=args.prune_factor,
+                                     sat_tolerance=args.sat_tolerance,
+                                     beta=args.beta,
+                                     early_stop=args.early_stop)
 
             prompt = [tokenizer.decode(x) for x in buf]
             output_sequences = [prompt[i] + tokenizer.decode(o).split(prompt[i])[-1].split('<|endoftext|>')[0].rstrip()
