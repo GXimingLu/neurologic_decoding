@@ -5,7 +5,7 @@ from tqdm import tqdm
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--split", type=str, default='test',
+    parser.add_argument("--split", type=str, required=True,
                         help='dev or test')
     parser.add_argument("--input_file", type=str, required=True,
                         help='raw generated file to expand')
