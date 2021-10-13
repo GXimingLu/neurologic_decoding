@@ -19,8 +19,7 @@ We suggest using conda to setup environment. With conda installed, create three 
     ``
     
    You could also refer to installation instructions in [fairseq](https://github.com/pytorch/fairseq/tree/v0.10.1) repo.
-   
-   
+   <br><br/>  
 * Unilm
 
     You need to first replace ``HOME_PATH`` in [unilm.yml](unilm.yml) with your home path.
@@ -29,9 +28,8 @@ We suggest using conda to setup environment. With conda installed, create three 
     conda env create -f unilm.yml
     ``
   
-   Then, you need to install a specific version of huggingface package which incorporates unilm following instructions [here](https://github.com/huggingface/transformers/pull/2160).
-  
- 
+   Then, you need to install a specific version of huggingface package which incorporates unilm following instructions [here](https://github.com/huggingface/transformers/pull/2160). 
+
 Our code is tested on Quadro RTX 8000 with CUDA version 11.2 and driver version 460.27.04
 
 ## Model
