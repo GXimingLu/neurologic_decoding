@@ -44,7 +44,7 @@ If you couldn't install ROUGE successfully, please refer [here](https://stackove
 
 ## Citation
 If you use this codebase in your work, please consider citing our paper:
-```latex
+```
 @inproceedings{lu-etal-2021-neurologic,
     title = "{N}euro{L}ogic Decoding: (Un)supervised Neural Text Generation with Predicate Logic Constraints",
     author = "Lu, Ximing  and  West, Peter  and  Zellers, Rowan  and  Le Bras, Ronan  and  Bhagavatula, Chandra  and  Choi, Yejin",
