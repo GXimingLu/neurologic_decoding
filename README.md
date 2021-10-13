@@ -4,20 +4,20 @@ This is the official repo for the paper ["Neurologic Decoding: (Un)supervised Ne
 
 ## Requirement
 We suggest using conda to setup environment. With conda installed, create three new environments:
-1. Huggingface 
+* Huggingface 
     ```
     conda create -n hug python=3.7
     conda activate hug
     pip install -r huggingface.txt
     ```
-2. Fairseq
+* Fairseq
    
     You need to first replace ``HOME_PATH`` in [fairseq.yml](fairseq.yml) with your home path. 
     ```
     conda env create -f fairseq.yml
     ```
    You could also refer to installation instructions in [fairseq](https://github.com/pytorch/fairseq/tree/v0.10.1) repo.
-2. Unilm
+* Unilm
 
     You need to first replace ``HOME_PATH`` in [unilm.yml](unilm.yml) with your home path. 
     ```
@@ -29,11 +29,11 @@ Our code is tested on Quadro RTX 8000 with CUDA version 11.2 and driver version 
 
 ## Model
 We release our models trained on CommonGen data for reproducibility. 
-1. GPT2:  [https://drive.google.com/drive/folders/1Jqav26p_g6BmpNg-6mx0AMiPYHH07Vju?usp=sharing](https://drive.google.com/drive/folders/1Jqav26p_g6BmpNg-6mx0AMiPYHH07Vju?usp=sharing)
-2. BART:  [https://drive.google.com/drive/folders/19UUug_dkZbSltw1P-CrH_G9gKQwBuAA7?usp=sharing](https://drive.google.com/drive/folders/19UUug_dkZbSltw1P-CrH_G9gKQwBuAA7?usp=sharing)
-3. T5:    [https://drive.google.com/drive/folders/1sMQYbhHjp5p0MuzerQT8zS6yAXyIej5g?usp=sharing](https://drive.google.com/drive/folders/1sMQYbhHjp5p0MuzerQT8zS6yAXyIej5g?usp=sharing)
-4. Unilm: [https://drive.google.com/drive/folders/1V6ynPZE5XgAOIkPtb7_Npskz7S0OLp1N?usp=sharing](https://drive.google.com/drive/folders/1V6ynPZE5XgAOIkPtb7_Npskz7S0OLp1N?usp=sharing)
-5. Unilm_v2: [https://drive.google.com/drive/folders/1ukVAg2RaCQqZXh1RtkPGBCleW8Xah7u8?usp=sharing](https://drive.google.com/drive/folders/1ukVAg2RaCQqZXh1RtkPGBCleW8Xah7u8?usp=sharing)
+* GPT2:  [https://drive.google.com/drive/folders/1Jqav26p_g6BmpNg-6mx0AMiPYHH07Vju?usp=sharing](https://drive.google.com/drive/folders/1Jqav26p_g6BmpNg-6mx0AMiPYHH07Vju?usp=sharing)
+* BART:  [https://drive.google.com/drive/folders/19UUug_dkZbSltw1P-CrH_G9gKQwBuAA7?usp=sharing](https://drive.google.com/drive/folders/19UUug_dkZbSltw1P-CrH_G9gKQwBuAA7?usp=sharing)
+* T5:    [https://drive.google.com/drive/folders/1sMQYbhHjp5p0MuzerQT8zS6yAXyIej5g?usp=sharing](https://drive.google.com/drive/folders/1sMQYbhHjp5p0MuzerQT8zS6yAXyIej5g?usp=sharing)
+* Unilm: [https://drive.google.com/drive/folders/1V6ynPZE5XgAOIkPtb7_Npskz7S0OLp1N?usp=sharing](https://drive.google.com/drive/folders/1V6ynPZE5XgAOIkPtb7_Npskz7S0OLp1N?usp=sharing)
+* Unilm_v2: [https://drive.google.com/drive/folders/1ukVAg2RaCQqZXh1RtkPGBCleW8Xah7u8?usp=sharing](https://drive.google.com/drive/folders/1ukVAg2RaCQqZXh1RtkPGBCleW8Xah7u8?usp=sharing)
 
 Please follow instructions in each sub-directory to run neurologic decoding on top of each model. 
 
