@@ -1,18 +1,19 @@
-This directory contains code to run neurologic decoding on top of GPT2
+This directory contains code to run neurologic decoding on top of Unilm
 
 * Activate conda environment
     ```
-    conda activate hug
+    conda activate unilm
     ```
 
 * Run beam search baseline 
     ```
-    bash beam_search.sh DEVICE_ID SPLIT MODEL_PATH OUTPUT_FILE_NAME
+    mkdir OUTPUT_DIR
+    bash beam_search.sh DEVICE_ID CHECKPOINT_EPOCH SPLIT MODEL_DIR OUTPUT_DIR OUTPUT_FILE_NAME
     ```
 
 * Run neurologic decoding
     ```
-    bash decode.sh DEVICE_ID SPLIT MODEL_PATH OUTPUT_FILE_NAME
+    bash decode.sh DEVICE_ID CHECKPOINT_EPOCH SPLIT MODEL_DIR OUTPUT_DIR OUTPUT_FILE_NAME
     ```
   
 * Format the output file for evaluation via [expand.py](../expand.py)
